@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>聞き取りクエスト N3</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', 'Yu Gothic', sans-serif;
+    background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+    min-height: 100vh;
+    display: flex; justify-content: center; align-items: center;
+    padding: 20px; color: #eee;
+  }
+  .game {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 30px;
+    width: 100%; max-width: 700px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  h1 { text-align: center; font-size: 1.8em; margin-bottom: 5px;
+       background: linear-gradient(90deg, #ff6b9d, #ffa502, #7bed9f);
+       -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .subtitle { text-align: center; color: #888; font-size: 0.9em; margin-bottom: 20px; }
+
+  .hud {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 10px; margin-bottom: 20px;
+  }
+  .hud-item {
+    background: rgba(0,0,0,0.3); padding: 10px;
+    border-radius: 10px; text-align: center;
+  }
+  .hud-label { font-size: 0.7em; color: #888; text-transform: uppercase; }
+  .hud-value { font-size: 1.3em; font-weight: bold; color: #7bed9f; }
+
+  .stage-info {
+    text-align: center; margin-bottom: 15px;
+    color: #ffa502; font-size: 0.9em;
+  }
+
+  .progress-bar {
+    height: 6px; background: rgba(0,0,0,0.3);
+    border-radius: 3px; overflow: hidden; margin-bottom: 20px;
+  }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #ff6b9d, #ffa502);
+    transition: width 0.3s;
+  }
+
+  .question-box {
+    background: rgba(0,0,0,0.25);
+    border-radius: 15px; padding: 25px;
+    margin-bottom: 20px; text-align: center;
+  }
+
+  .audio-btn {
+    font-size: 3em; cursor: pointer; user-select: none;
+    background: none; border: none; color: #7bed9f;
+    transition: transform 0.2s;
+    margin: 10px;
+  }
+  .audio-btn:hover { transform: scale(1.15); }
+  .audio-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .replay-info { font-size: 0.8em; color: #888; margin-top: 5px; }
+
+  .timer {
+    font-size: 1.5em; font-weight: bold; color: #ff6b9d;
+    margin: 10px 0;
+  }
+  .timer.warning { color: #ff4757; animation: pulse 0.5s infinite; }
+  @keyframes pulse { 50% { opacity: 0.5; } }
+
+  input[type="text"] {
+    width: 100%; padding: 15px; font-size: 1.1em;
+    background: rgba(255,255,255,0.1);
+    border: 2px solid rgba(255,255,255,0.2);
+    border-radius: 10px; color: #fff;
+    font-family: 'Yu Gothic', 'MS Gothic', monospace;
+    outline: none; transition: border 0.2s;
+  }
+  input[type="text"]:focus { border-color: #7bed9f; }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+  button {
+    padding: 12px 24px; font-size: 1em; font-weight: bold;
+    border: none; border-radius: 10px; cursor: pointer;
+    transition: transform 0.15s, opacity 0.2s;
+    flex: 1; min-width: 120px;
+  }
+  button:hover:not(:disabled) { transform: translateY(-2px); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: linear-gradient(90deg, #7bed9f, #2ed573); color: #000; }
+  .btn-secondary { background: rgba(255,255,255,0.15); color: #fff; }
+  .btn-hint { background: linear-gradient(90deg, #ffa502, #ff6348); color: #000; }
+
+  .feedback {
+    margin-top: 15px; padding: 15px; border-radius: 10px;
+    text-align: center; font-weight: bold; display: none;
+  }
+  .feedback.correct { background: rgba(46,213,115,0.2); color: #7bed9f; display: block; }
+  .feedback.partial { background: rgba(255,165,2,0.2); color: #ffa502; display: block; }
+  .feedback.wrong { background: rgba(255,71,87,0.2); color: #ff6b9d; display: block; }
+
+  .answer-reveal {
+    margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.3);
+    border-radius: 8px; font-size: 0.9em; color: #aaa;
+    font-family: 'Yu Gothic', monospace; display: none;
+  }
+  .answer-reveal.show { display: block; }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .start-screen, .end-screen { text-align: center; }
+  .start-screen h2, .end-screen h2 { margin-bottom: 15px; font-size: 1.5em; }
+  .start-screen p, .end-screen p { color: #aaa; margin-bottom: 20px; line-height: 1.6; }
+
+  .rank-display {
+    font-size: 2em; margin: 15px 0;
+    background: linear-gradient(90deg, #ff6b9d, #ffa502);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    font-weight: bold;
+  }
+
+  .combo-badge {
+    position: fixed; top: 20px; right: 20px;
+    background: linear-gradient(90deg, #ff6b9d, #ffa502);
+    color: #000; padding: 8px 16px; border-radius: 20px;
+    font-weight: bold; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .combo-badge.show { opacity: 1; }
+
+  @media (max-width: 600px) {
+    .hud { grid-template-columns: repeat(2, 1fr); }
+    .game { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="game">
+  <h1>聞き取りクエスト</h1>
+  <div class="subtitle">Listening Quest — Level N3</div>
+
+  <!-- START SCREEN -->
+  <div class="screen active" id="startScreen">
+    <div class="start-screen">
+      <h2>🎧 Siap Latihan N3?</h2>
+      <p>
+        Dengarkan audio Jepang, ketik transkripnya.<br>
+        Gunakan <b>IME Jepang</b> atau romaji (keduanya diterima).<br>
+        Timer aktif — hati-hati! ⏱️
+      </p>
+      <button class="btn-primary" onclick="startGame()">▶ Mulai Game</button>
+    </div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div class="screen" id="gameScreen">
+    <div class="hud">
+      <div class="hud-item">
+        <div class="hud-label">Skor</div>
+        <div class="hud-value" id="scoreDisplay">0</div>
+      </div>
+      <div class="hud-item">
+        <div class="hud-label">Soal</div>
+        <div class="hud-value" id="questionDisplay">1/10</div>
+      </div>
+      <div class="hud-item">
+        <div class="hud-label">Combo</div>
+        <div class="hud-value" id="comboDisplay">0</div>
+      </div>
+      <div class="hud-item">
+        <div class="hud-label">Nyawa</div>
+        <div class="hud-value" id="livesDisplay">❤❤❤</div>
+      </div>
+    </div>
+
+    <div class="stage-info" id="stageInfo">Stage 1: 単語スナイプ</div>
+
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div class="question-box">
+      <button class="audio-btn" id="audioBtn" onclick="playAudio()">🔊</button>
+      <div class="replay-info" id="replayInfo">Klik untuk memutar (3x tersisa)</div>
+      <div class="timer" id="timerDisplay">--:--</div>
+    </div>
+
+    <input type="text" id="answerInput" placeholder="Ketik jawaban di sini..."
+           autocomplete="off" autocorrect="off" spellcheck="false">
+
+    <div class="btn-row">
+      <button class="btn-hint" id="hintBtn" onclick="useHint()">💡 Hint (-30)</button>
+      <button class="btn-primary" id="submitBtn" onclick="submitAnswer()">✓ Jawab</button>
+      <button class="btn-secondary" id="skipBtn" onclick="skipQuestion()">⏭ Lewati</button>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+    <div class="answer-reveal" id="answerReveal"></div>
+  </div>
+
+  <!-- END SCREEN -->
+  <div class="screen" id="endScreen">
+    <div class="end-screen">
+      <h2>🏁 Selesai!</h2>
+      <div class="rank-display" id="finalRank">見習い</div>
+      <p id="finalScore">Skor: 0</p>
+      <p id="finalStats"></p>
+      <div class="btn-row" style="margin-top: 20px;">
+        <button class="btn-primary" onclick="location.reload()">🔄 Main Lagi</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="combo-badge" id="comboBadge">COMBO x3! +80</div>
+
+<script>
+// ============================================================
+// DATA SOAL N3 — 10 soal, campuran stage
+// ============================================================
+const QUESTIONS = [
+  // Stage 1: 単語スナイプ
+  {
+    stage: "Stage 1: 単語スナイプ",
+    audio: "けいけん",
+    correct: ["keiken", "経験"],
+    display: "経験 (keiken) — pengalaman",
+    time: 10
+  },
+  {
+    stage: "Stage 1: 単語スナイプ",
+    audio: "しょうらい",
+    correct: ["shourai", "将来", "syōrai"],
+    display: "将来 (shourai) — masa depan",
+    time: 10
+  },
+
+  // Stage 2: 短文キャッチ
+  {
+    stage: "Stage 2: 短文キャッチ",
+    audio: "来週の会議は水曜日に変更になりました。",
+    correct: ["raishuu no kaigi wa suiyoubi ni henkou ni narimashita",
+              "来週の会議は水曜日に変更になりました"],
+    display: "来週の会議は水曜日に変更になりました。\n(raishuu no kaigi wa suiyoubi ni henkou ni narimashita)\n= Rapat minggu depan diubah ke hari Rabu.",
+    time: 25
+  },
+  {
+    stage: "Stage 2: 短文キャッチ",
+    audio: "彼は忙しいらしいから、今日は連絡しないほうがいい。",
+    correct: ["kare wa isogashii rashii kara kyou wa renraku shinai hou ga ii",
+              "彼は忙しいらしいから、今日は連絡しないほうがいい"],
+    display: "彼は忙しいらしいから、今日は連絡しないほうがいい。\n(kare wa isogashii rashii kara, kyou wa renraku shinai hou ga ii)\n= Sepertinya dia sibuk, jadi sebaiknya jangan hubungi hari ini.",
+    time: 30
+  },
+
+  // Stage 3: 会話パズル
+  {
+    stage: "Stage 3: 会話パズル",
+    audio: "週末、どこか行く予定ある？",
+    correct: ["shuumatsu dokoka iku yotei aru",
+              "週末、どこか行く予定ある"],
+    display: "週末、どこか行く予定ある？\n(shuumatsu, dokoka iku yotei aru?)\n= Akhir pekan ada rencana ke mana?",
+    time: 20
+  },
+  {
+    stage: "Stage 3: 会話パズル",
+    audio: "友達と箱根に行くことにしたんだ。温泉に入るつもり。",
+    correct: ["tomodachi to hakone ni iku koto ni shita nda onsen ni hairu tsumori",
+              "友達と箱根に行くことにしたんだ。温泉に入るつもり"],
+    display: "友達と箱根に行くことにしたんだ。温泉に入るつもり。\n(tomodachi to hakone ni iku koto ni shita nda. onsen ni hairu tsumori.)\n= Aku memutuskan pergi ke Hakone dengan teman. Niatnya masuk onsen.",
+    time: 35
+  },
+
+  // Stage 4: ニュース聞き
+  {
+    stage: "Stage 4: ニュース聞き",
+    audio: "政府は来月から、外国人観光客に対する新しい税制を導入する方針を発表しました。",
+    correct: ["seifu wa raigetsu kara gaikokujin kankoukyaku ni taisuru atarashii zeisei wo dounyuu suru houshin wo happyou shimashita",
+              "政府は来月から、外国人観光客に対する新しい税制を導入する方針を発表しました"],
+    display: "政府は来月から、外国人観光客に対する新しい税制を導入する方針を発表しました。\n= Pemerintah mengumumkan kebijakan menerapkan sistem pajak baru untuk turis asing mulai bulan depan.",
+    time: 40
+  },
+  {
+    stage: "Stage 4: ニュース聞き",
+    audio: "これにより、一部の商品の価格が上がる可能性があります。",
+    correct: ["kore ni yori ichibu no shouhin no kakaku ga agaru kanousei ga arimasu",
+              "これにより、一部の商品の価格が上がる可能性があります"],
+    display: "これにより、一部の商品の価格が上がる可能性があります。\n= Akibatnya, ada kemungkinan sebagian harga barang naik.",
+    time: 30
+  },
+
+  // Stage 5: BOSS
+  {
+    stage: "Stage 5: BOSS — 長文",
+    audio: "働き方改革の一環として、多くの企業が在宅勤務を導入しています。しかし、通勤時間が減った一方で、仕事とプライベートの区別が難しくなったという声も増えています。",
+    correct: ["hatarakikata kaikaku no ikkan toshite ooku no kigyou ga zaitaku kinmu wo dounyuu shite imasu",
+              "働き方改革の一環として、多くの企業が在宅勤務を導入しています"],
+    display: "働き方改革の一環として、多くの企業が在宅勤務を導入しています。\nしかし、通勤時間が減った一方で、仕事とプライベートの区別が難しくなったという声も増えています。\n\n= Sebagai bagian dari reformasi cara kerja, banyak perusahaan menerapkan kerja dari rumah. Namun, di satu sisi waktu komuter berkurang, di sisi lain makin banyak suara yang mengatakan sulit membedakan kerja dan pribadi.",
+    time: 50
+  },
+  {
+    stage: "Stage 5: BOSS — 長文",
+    audio: "彼女は毎日のように図書館に通っているらしい。",
+    correct: ["kanojo wa mainichi no you ni toshokan ni kayotte iru rashii",
+              "彼女は毎日のように図書館に通っているらしい"],
+    display: "彼女は毎日のように図書館に通っているらしい。\n= Sepertinya dia pergi ke perpustakaan hampir setiap hari.",
+    time: 25
+  }
+];
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  currentIndex: 0,
+  score: 0,
+  combo: 0,
+  maxCombo: 0,
+  lives: 3,
+  replaysLeft: 3,
+  hintsUsed: 0,
+  timer: null,
+  timeLeft: 0,
+  answered: false,
+  correctCount: 0
+};
+
+// ============================================================
+// AUDIO via Web Speech API (gratis, tanpa file)
+// ============================================================
+let jpVoice = null;
+function loadVoices() {
+  const voices = speechSynthesis.getVoices();
+  jpVoice = voices.find(v => v.lang === 'ja-JP' || v.lang.startsWith('ja')) || null;
+}
+speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+function speak(text, rate = 1.0) {
+  if (!('speechSynthesis' in window)) {
+    alert('Browser tidak mendukung Web Speech API. Coba Chrome/Edge.');
+    return;
+  }
+  speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'ja-JP';
+  utter.rate = rate;
+  utter.pitch = 1.0;
+  if (jpVoice) utter.voice = jpVoice;
+  speechSynthesis.speak(utter);
+}
+
+// ============================================================
+// GAME FLOW
+// ============================================================
+function startGame() {
+  showScreen('gameScreen');
+  state.currentIndex = 0;
+  state.score = 0;
+  state.combo = 0;
+  state.maxCombo = 0;
+  state.lives = 3;
+  state.correctCount = 0;
+  loadQuestion();
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function loadQuestion() {
+  if (state.currentIndex >= QUESTIONS.length || state.lives <= 0) {
+    endGame();
+    return;
+  }
+
+  const q = QUESTIONS[state.currentIndex];
+  state.replaysLeft = 3;
+  state.hintsUsed = 0;
+  state.answered = false;
+  state.timeLeft = q.time;
+
+  document.getElementById('stageInfo').textContent = q.stage;
+  document.getElementById('questionDisplay').textContent =
+    `${state.currentIndex + 1}/${QUESTIONS.length}`;
+  document.getElementById('scoreDisplay').textContent = state.score;
+  document.getElementById('comboDisplay').textContent = state.combo;
+  document.getElementById('livesDisplay').textContent =
+    '❤'.repeat(state.lives) + '🖤'.repeat(3 - state.lives);
+  document.getElementById('progressFill').style.width =
+    `${(state.currentIndex / QUESTIONS.length) * 100}%`;
+
+  document.getElementById('replayInfo').textContent =
+    `Klik untuk memutar (${state.replaysLeft}x tersisa)`;
+  document.getElementById('audioBtn').disabled = false;
+  document.getElementById('answerInput').value = '';
+  document.getElementById('answerInput').disabled = false;
+  document.getElementById('answerInput').focus();
+  document.getElementById('submitBtn').disabled = false;
+  document.getElementById('hintBtn').disabled = false;
+  document.getElementById('skipBtn').disabled = false;
+
+  const fb = document.getElementById('feedback');
+  fb.className = 'feedback';
+  fb.textContent = '';
+  const ar = document.getElementById('answerReveal');
+  ar.className = 'answer-reveal';
+  ar.textContent = '';
+
+  // auto-play sekali
+  setTimeout(() => {
+    speak(q.audio);
+    state.replaysLeft--;
+    updateReplayInfo();
+  }, 400);
+
+  startTimer();
+}
+
+function startTimer() {
+  clearInterval(state.timer);
+  updateTimerDisplay();
+  state.timer = setInterval(() => {
+    if (state.answered) return;
+    state.timeLeft--;
+    updateTimerDisplay();
+    if (state.timeLeft <= 0) {
+      clearInterval(state.timer);
+      timeUp();
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById('timerDisplay');
+  const m = Math.floor(state.timeLeft / 60);
+  const s = state.timeLeft % 60;
+  el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  el.classList.toggle('warning', state.timeLeft <= 5);
+}
+
+function timeUp() {
+  if (state.answered) return;
+  state.answered = true;
+  state.combo = 0;
+  state.lives--;
+  showFeedback('wrong', '⏰ Waktu habis!');
+  revealAnswer();
+  disableInputs();
+  setTimeout(nextQuestion, 2500);
+}
+
+function playAudio() {
+  if (state.replaysLeft <= 0 || state.answered) return;
+  const q = QUESTIONS[state.currentIndex];
+  speak(q.audio);
+  state.replaysLeft--;
+  updateReplayInfo();
+}
+
+function updateReplayInfo() {
+  document.getElementById('replayInfo').textContent =
+    `Klik untuk memutar (${state.replaysLeft}x tersisa)`;
+  if (state.replaysLeft <= 0) {
+    document.getElementById('audioBtn').disabled = true;
+  }
+}
+
+function useHint() {
+  if (state.answered) return;
+  const q = QUESTIONS[state.currentIndex];
+  const target = q.correct[0];
+  const current = document.getElementById('answerInput').value;
+
+  state.hintsUsed++;
+  state.score = Math.max(0, state.score - 30);
+
+  let hint;
+  if (state.hintsUsed === 1) {
+    hint = target.substring(0, Math.ceil(target.length / 3));
+  } else {
+    hint = target.substring(0, Math.ceil(target.length / 2));
+  }
+
+  document.getElementById('answerInput').value = hint;
+  document.getElementById('scoreDisplay').textContent = state.score;
+
+  if (state.hintsUsed >= 2) {
+    document.getElementById('hintBtn').disabled = true;
+  }
+}
+
+function submitAnswer() {
+  if (state.answered) return;
+  const q = QUESTIONS[state.currentIndex];
+  const input = document.getElementById('answerInput').value.trim();
+
+  if (!input) return;
+
+  state.answered = true;
+  clearInterval(state.timer);
+
+  const result = checkAnswer(input, q.correct);
+  let points = result.score;
+
+  // bonus combo
+  if (points > 0) {
+    state.combo++;
+    state.maxCombo = Math.max(state.maxCombo, state.combo);
+    if (state.combo === 3) { points += 80; showComboBadge('COMBO x3! +80'); }
+    else if (state.combo === 5) { points += 250; showComboBadge('COMBO x5! +250'); }
+    else if (state.combo > 5) { points += 50; }
+    state.correctCount++;
+  } else {
+    state.combo = 0;
+    state.lives--;
+  }
+
+  state.score += points;
+
+  // update UI
+  document.getElementById('scoreDisplay').textContent = state.score;
+  document.getElementById('comboDisplay').textContent = state.combo;
+  document.getElementById('livesDisplay').textContent =
+    '❤'.repeat(Math.max(0,state.lives)) + '🖤'.repeat(3 - Math.max(0,state.lives));
+
+  showFeedback(result.type, `${result.msg} ${points > 0 ? '+' + points : ''}`);
+  revealAnswer();
+  disableInputs();
+
+  setTimeout(nextQuestion, 2500);
+}
+
+function skipQuestion() {
+  if (state.answered) return;
+  state.answered = true;
+  clearInterval(state.timer);
+  state.combo = 0;
+  state.lives--;
+  document.getElementById('livesDisplay').textContent =
+    '❤'.repeat(Math.max(0,state.lives)) + '🖤'.repeat(3 - Math.max(0,state.lives));
+  showFeedback('wrong', '⏭ Dilewati');
+  revealAnswer();
+  disableInputs();
+  setTimeout(nextQuestion, 2000);
+}
+
+function nextQuestion() {
+  state.currentIndex++;
+  if (state.lives <= 0 || state.currentIndex >= QUESTIONS.length) {
+    endGame();
+  } else {
+    loadQuestion();
+  }
+}
+
+function disableInputs() {
+  document.getElementById('answerInput').disabled = true;
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('hintBtn').disabled = true;
+  document.getElementById('skipBtn').disabled = true;
+  document.getElementById('audioBtn').disabled = true;
+}
+
+function showFeedback(type, msg) {
+  const fb = document.getElementById('feedback');
+  fb.className = 'feedback ' + type;
+  fb.textContent = msg;
+}
+
+function revealAnswer() {
+  const q = QUESTIONS[state.currentIndex];
+  const ar = document.getElementById('answerReveal');
+  ar.textContent = '✅ Jawaban: ' + q.display;
+  ar.classList.add('show');
+}
+
+function showComboBadge(text) {
+  const b = document.getElementById('comboBadge');
+  b.textContent = text;
+  b.classList.add('show');
+  setTimeout(() => b.classList.remove('show'), 1500);
+}
+
+// ============================================================
+// CEK JAWABAN (normalisasi + Levenshtein)
+// ============================================================
+function normalize(s) {
+  return s.toLowerCase()
+    .replace(/[。、！？!?.,\s\u3000]/g, '')
+    .replace(/[ａ-ｚ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+}
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (!m) return n; if (!n) return m;
+  const dp = Array.from({length: m+1}, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = Math.min(
+        dp[i-1][j] + 1,
+        dp[i][j-1] + 1,
+        dp[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)
+      );
+    }
+  }
+  return dp[m][n];
+}
+
+function checkAnswer(input, correctList) {
+  const inp = normalize(input);
+  let best = { dist: Infinity, matched: null };
+
+  for (const c of correctList) {
+    const nc = normalize(c);
+    const d = levenshtein(inp, nc);
+    const ratio = d / Math.max(nc.length, 1);
+    if (ratio < best.dist) best = { dist: ratio, matched: c };
+  }
+
+  // threshold berbasis rasio (lebih adil untuk kalimat panjang)
+  if (best.dist <= 0.02) return { score: 200, type: 'correct', msg: '🎉 完璧！Sempurna!' };
+  if (best.dist <= 0.08) return { score: 150, type: 'correct', msg: '👍 惜しい！Hampir!' };
+  if (best.dist <= 0.20) return { score: 80,  type: 'partial', msg: '🤔 もう少し！Sedikit lagi.' };
+  return { score: 0, type: 'wrong', msg: '❌ 残念…Salah.' };
+}
+
+// ============================================================
+// END GAME
+// ============================================================
+function endGame() {
+  clearInterval(state.timer);
+  showScreen('endScreen');
+
+  const rank = getRank(state.score);
+  document.getElementById('finalRank').textContent = rank;
+  document.getElementById('finalScore').textContent =
+    `Skor Akhir: ${state.score}`;
+  document.getElementById('finalStats').innerHTML =
+    `Benar: ${state.correctCount}/${QUESTIONS.length}<br>` +
+    `Combo Tertinggi: ${state.maxCombo}<br>` +
+    `Nyawa Tersisa: ${Math.max(0, state.lives)}`;
+}
+
+function getRank(score) {
+  if (score >= 10000) return '達人 — Siap N2! 🚀';
+  if (score >= 6000)  return '上級者 — N3 Master ⭐';
+  if (score >= 3000)  return '中級者 — N3 Solid ✅';
+  if (score >= 1000)  return '初学者 — N3 Pemula';
+  return '見習い — Pemula N3';
+}
+
+// Enter = submit
+document.getElementById('answerInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitAnswer();
+});
+</script>
+</body>
+</html>
